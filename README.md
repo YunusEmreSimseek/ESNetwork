@@ -55,12 +55,13 @@ enum MyAPIEndpoint: Endpoint {
     case createUser(name: String, email: String)
     case getUser(id: Int)
     case searchUsers(query: String, page: Int)
+    case updateUser(id: Int, name: String, email: String)
 
     var path: String {
         switch self {
         case .getUsers, .createUser:
             return "/users"
-        case .getUser(let id):
+        case .getUser(let id), .updateUser(let id, _, _):
             return "/users/\(id)"
         case .searchUsers:
             return "/users/search"
@@ -73,6 +74,8 @@ enum MyAPIEndpoint: Endpoint {
             return .get
         case .createUser:
             return .post
+        case .updateUser:
+            return .put
         }
     }
 
@@ -81,24 +84,28 @@ enum MyAPIEndpoint: Endpoint {
         case .getUsers, .getUser:
             return .requestPlain
         case .createUser(let name, let email):
-            // Assuming User is an Encodable struct
-            struct User: Encodable { let name: String; let email: String }
-            return .requestWithBody(User(name: name, email: email))
+            struct UserBody: Encodable { let name: String; let email: String }
+            return .requestWithBody(UserBody(name: name, email: email))
         case .searchUsers(let query, let page):
             return .requestWithQueryParameters([
                 "q": query,
                 "page": String(page)
             ])
+        case .updateUser(_, let name, let email):
+            struct UserBody: Encodable { let name: String; let email: String }
+            return .requestWithBodyAndQuery(
+                body: UserBody(name: name, email: email),
+                queryParameters: ["version": "2"]
+            )
         }
     }
 
-    // Optional: Customize timeout for specific endpoints
-    var timeoutInterval: TimeInterval? {
+    var timeoutInterval: TimeInterval {
         switch self {
         case .getUsers:
             return 30.0
         default:
-            return nil
+            return 30.0
         }
     }
 }
@@ -122,10 +129,8 @@ Initialize `NetworkManager` and use its `request` methods.
 import Foundation
 import ESNetwork
 
-// MARK: - Basic Request Example
-
 func fetchUsers() async {
-    let networkManager = NetworkManager() // Use default session and decoder
+    let networkManager = NetworkManager()
 
     do {
         let users = try await networkManager.request(MyAPIEndpoint.getUsers, responseType: [User].self)
@@ -135,20 +140,15 @@ func fetchUsers() async {
     }
 }
 
-// MARK: - Request with Body Example
-
 func createUser(name: String, email: String) async {
     let networkManager = NetworkManager()
     do {
-        // For requests without an expected return type (e.g., 204 No Content)
         try await networkManager.request(MyAPIEndpoint.createUser(name: name, email: email))
         print("User created successfully!")
     } catch {
         print("Failed to create user: \(error.localizedDescription)")
     }
 }
-
-// MARK: - Request with Query Parameters Example
 
 func searchUsers(query: String, page: Int) async {
     let networkManager = NetworkManager()
@@ -170,42 +170,31 @@ import Foundation
 import ESNetwork
 
 class MyAuthProvider: AuthProvider {
-    private var currentAccessToken: String? = "initial_valid_token" // Simulate a stored token
+    private var currentAccessToken: String? = "initial_valid_token"
     private var isRefreshing = false
 
     func getAccessToken() async throws -> String? {
-        // In a real app, you would retrieve this from Keychain or a secure store
         return currentAccessToken
     }
 
     func refreshToken() async throws -> String? {
         guard !isRefreshing else {
-            // Wait for existing refresh to complete
-            // (You might use a TaskGroup or continuation here for a more robust solution)
-            try await Task.sleep(nanoseconds: 1 * 1_000_000_000) // Simulate delay
-            return currentAccessToken // Return the newly refreshed token if available
+            try await Task.sleep(nanoseconds: 1 * 1_000_000_000)
+            return currentAccessToken
         }
 
         isRefreshing = true
         print("Refreshing token...")
-        // Simulate an API call to refresh the token
-        try await Task.sleep(nanoseconds: 2 * 1_000_000_000) // Simulate network call
+        try await Task.sleep(nanoseconds: 2 * 1_000_000_000)
 
-        // On success
         let newToken = "new_token_\(UUID().uuidString)"
         self.currentAccessToken = newToken
         isRefreshing = false
         print("Token refreshed: \(newToken)")
         return newToken
-
-        // On failure (e.g., refresh token expired)
-        // self.currentAccessToken = nil
-        // isRefreshing = false
-        // throw NetworkError.unauthorized // Or a more specific AuthError
     }
 }
 
-// Using NetworkManager with AuthProvider
 func performAuthenticatedRequest() async {
     let authProvider = MyAuthProvider()
     let networkManager = NetworkManager(authProvider: authProvider)
@@ -250,7 +239,6 @@ class HeaderInterceptor: NetworkInterceptor {
     }
 }
 
-// Using NetworkManager with Interceptors
 func performInterceptedRequest() async {
     let networkManager = NetworkManager(interceptors: [LoggingInterceptor(), HeaderInterceptor()])
 
@@ -268,7 +256,7 @@ func performInterceptedRequest() async {
 All network-related errors are encapsulated within the `NetworkError` enum. You can `catch` these errors to provide specific feedback to your users.
 
 ```swift
-enum NetworkError: Error, LocalizedError {
+enum NetworkError: Error, LocalizedError, Equatable {
     case invalidURL
     case encodingFailed(Error?)
     case transportError(Error)
@@ -280,9 +268,6 @@ enum NetworkError: Error, LocalizedError {
     case httpError(statusCode: Int, data: Data?)
     case decodingFailed(Error)
     case unknown(String)
-
-    // errorDescription provides localized messages
-    // isRetryable and isRecoverable properties help with UI/logic decisions
 }
 ```
 
