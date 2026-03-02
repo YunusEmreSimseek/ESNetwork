@@ -1,5 +1,7 @@
 # ESNetwork
 
+[![ESNetwork CI](https://github.com/YunusEmreSimseek/ESNetwork/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/YunusEmreSimseek/ESNetwork/actions/workflows/ci.yml)
+
 ESNetwork is a modern, generic, and protocol-oriented network abstraction layer for Swift applications, designed with `async/await` for clean and efficient asynchronous operations. It provides a robust and flexible foundation for handling network requests, responses, authentication, and error management across various projects.
 
 ## Features
