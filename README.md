@@ -27,14 +27,14 @@ You can add ESNetwork to your project using Swift Package Manager.
 
 1.  In Xcode, open your project.
 2.  Navigate to `File` > `Add Packages...`.
-3.  Enter the repository URL: `https://github.com/YunusEmreSimseek/ESNetwork.git` (Replace with your actual repository URL).
+3.  Enter the repository URL: `https://github.com/YunusEmreSimseek/ESNetwork.git`.
 4.  Choose the desired version or branch.
 
 Alternatively, you can add it to your `Package.swift` dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/YunusEmreSimseek/ESNetwork.git", from: "1.0.0") // Replace with your actual repository URL
+    .package(url: "https://github.com/YunusEmreSimseek/ESNetwork.git", from: "1.0.0")
 ]
 ```
 
